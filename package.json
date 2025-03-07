@@ -4,13 +4,6 @@
   "description": "A beautiful inspirational quotes application",
   "main": "index.html",
   "scripts": {
-    "dev": "netlify dev",
-    "build": "# no build step needed"
-  },
-  "dependencies": {
-    "node-fetch": "^2.6.9"
-  },
-  "devDependencies": {
-    "netlify-cli": "^15.0.0"
+    "start": "python -m http.server 3000"
   }
 }

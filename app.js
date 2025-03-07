@@ -1,6 +1,6 @@
 class QuotesApp {
     constructor() {
-        this.quotableApiUrl = '/.netlify/functions/quotable';
+        this.quotableApiUrl = 'https://api.quotable.io/random';
         this.backgrounds = [
             'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
             'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
@@ -33,7 +33,6 @@ class QuotesApp {
         document.getElementById('share').addEventListener('click', () => this.shareQuote());
         document.getElementById('changeBackground').addEventListener('click', () => this.changeBackground());
         
-        // Load initial quote
         await this.showRandomQuote();
     }
 
@@ -46,11 +45,10 @@ class QuotesApp {
             try {
                 const response = await fetch(this.quotableApiUrl);
                 if (!response.ok) throw new Error('Failed to fetch quote');
-                const quote = await response.json();
                 
+                const quote = await response.json();
                 localStorage.setItem('dailyQuote', JSON.stringify(quote));
                 localStorage.setItem('lastQuoteDate', today);
-                
                 this.displayDailyQuote(quote);
             } catch (error) {
                 console.error('Error fetching daily quote:', error);
@@ -80,22 +78,7 @@ class QuotesApp {
             if (!response.ok) throw new Error('Failed to fetch quote');
             const quote = await response.json();
             
-            // Try to get a background image from Netlify function
-            try {
-                const imgResponse = await fetch('/.netlify/functions/unsplash');
-                if (imgResponse.ok) {
-                    const imgData = await imgResponse.json();
-                    this.updateBackgroundImage(imgData.urls.regular);
-                } else {
-                    // Fallback to gradient if image fetch fails
-                    this.changeBackground();
-                }
-            } catch (error) {
-                console.error('Error fetching background image:', error);
-                // Fallback to gradient
-                this.changeBackground();
-            }
-
+            this.changeBackground();
             this.currentQuote = quote;
             this.displayQuote(quote);
         } catch (error) {
@@ -108,29 +91,10 @@ class QuotesApp {
         }
     }
 
-    updateBackgroundImage(imageUrl) {
-        const quoteContainer = document.querySelector('.quote-container');
-        if (quoteContainer) {
-            quoteContainer.style.backgroundImage = `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url(${imageUrl})`;
-            quoteContainer.style.backgroundSize = 'cover';
-            quoteContainer.style.backgroundPosition = 'center';
-        }
-    }
-
     changeBackground() {
         this.currentBackgroundIndex = (this.currentBackgroundIndex + 1) % this.backgrounds.length;
-        this.updateBackgrounds();
-    }
-
-    updateBackgrounds() {
         const gradient = this.backgrounds[this.currentBackgroundIndex];
         document.documentElement.style.setProperty('--quote-gradient', gradient);
-        
-        // Update daily quote background with a darker version
-        const dailyQuote = document.querySelector('.daily-quote');
-        if (dailyQuote) {
-            dailyQuote.style.background = gradient;
-        }
     }
 
     displayDailyQuote(quote) {
@@ -172,68 +136,52 @@ class QuotesApp {
         favoriteBtn.classList.toggle('favorited', isFavorite);
         
         // Enable/disable action buttons
-        copyBtn.disabled = !quote.content || quote.content === "No favorites yet! Add some quotes to your favorites.";
-        shareBtn.disabled = copyBtn.disabled;
+        const isValidQuote = quote.content && quote.content !== "No favorites yet! Add some quotes to your favorites.";
+        copyBtn.disabled = !isValidQuote;
+        shareBtn.disabled = !isValidQuote;
         
         this.currentQuote = quote;
     }
 
     async copyCurrentQuote() {
         if (!this.currentQuote) return;
-        
-        const textToCopy = `"${this.currentQuote.content}" - ${this.currentQuote.author}`;
-        
+        const text = `"${this.currentQuote.content}" - ${this.currentQuote.author}`;
         try {
-            await navigator.clipboard.writeText(textToCopy);
+            await navigator.clipboard.writeText(text);
             this.showToast('Quote copied to clipboard!');
-        } catch (err) {
-            console.error('Failed to copy text: ', err);
+        } catch (error) {
+            console.error('Failed to copy quote:', error);
             this.showToast('Failed to copy quote');
         }
     }
 
     async shareQuote() {
         if (!this.currentQuote) return;
-        
-        const shareText = `"${this.currentQuote.content}" - ${this.currentQuote.author}`;
+        const text = `"${this.currentQuote.content}" - ${this.currentQuote.author}`;
         
         if (navigator.share) {
             try {
-                await navigator.share({
-                    title: 'Share Quote',
-                    text: shareText,
-                });
+                await navigator.share({ text });
                 this.showToast('Quote shared successfully!');
-            } catch (err) {
-                console.error('Error sharing: ', err);
-                this.fallbackShare(shareText);
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    this.fallbackShare(text);
+                }
             }
         } else {
-            this.fallbackShare(shareText);
+            this.fallbackShare(text);
         }
     }
 
     fallbackShare(text) {
-        const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
-        window.open(twitterUrl, '_blank');
+        this.copyCurrentQuote();
     }
 
     showToast(message) {
-        const toast = document.createElement('div');
-        toast.className = 'toast';
+        const toast = document.getElementById('toast');
         toast.textContent = message;
-        document.body.appendChild(toast);
-        
-        // Trigger reflow
-        toast.offsetHeight;
-        
-        // Add visible class for animation
-        toast.classList.add('visible');
-        
-        setTimeout(() => {
-            toast.classList.remove('visible');
-            setTimeout(() => toast.remove(), 300);
-        }, 2000);
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 3000);
     }
 
     toggleFavorites() {
@@ -244,17 +192,14 @@ class QuotesApp {
     }
 
     toggleCurrentQuoteFavorite() {
-        if (!this.currentQuote || this.currentQuote.content === "No favorites yet! Add some quotes to your favorites.") {
-            return;
-        }
+        if (!this.currentQuote || this.currentQuote.author === 'System') return;
 
-        const quoteIndex = this.favorites.findIndex(fav => fav.content === this.currentQuote.content);
-        
-        if (quoteIndex === -1) {
+        const index = this.favorites.findIndex(fav => fav.content === this.currentQuote.content);
+        if (index === -1) {
             this.favorites.push(this.currentQuote);
             this.showToast('Added to favorites!');
         } else {
-            this.favorites.splice(quoteIndex, 1);
+            this.favorites.splice(index, 1);
             this.showToast('Removed from favorites!');
         }
 
@@ -264,6 +209,4 @@ class QuotesApp {
 }
 
 // Initialize the app
-window.onload = () => {
-    window.quotesApp = new QuotesApp();
-};
+new QuotesApp();
