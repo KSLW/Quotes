@@ -1,6 +1,6 @@
 const fetch = require('node-fetch');
 
-exports.handler = async function(event, context) {
+const handler = async (event, context) => {
   // Enable CORS
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -51,3 +51,5 @@ exports.handler = async function(event, context) {
     };
   }
 };
+
+module.exports = { handler };
