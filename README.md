@@ -4,7 +4,7 @@ A beautiful, modern quotes application with dynamic backgrounds and daily inspir
 
 🚀 Live API
 
-🔗 Live Deployment: [https://get-inspiered.netlify.app/]
+🔗 Live Deployment: https://get-inspiered.netlify.app/
 
 ## Features
 - Daily inspirational quotes
