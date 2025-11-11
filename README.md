@@ -2,6 +2,8 @@
 
 A beautiful, modern quotes application with dynamic backgrounds and daily inspiration.
 
+🚀 Live API
+
 🔗 Live Deployment: [https://get-inspiered.netlify.app/]
 
 ## Features
